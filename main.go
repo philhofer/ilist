@@ -25,9 +25,6 @@ func main() {
 	if file == "" {
 		abort("no input file specified")
 	}
-	if err := parseTemplate(); err != nil {
-		abort(err)
-	}
 	if err := AddFieldsTo(file, *typname); err != nil {
 		abort(err)
 	}

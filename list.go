@@ -11,19 +11,18 @@ func (td *TDequeue) push(t *T) {
 	} else {
 		td.tail = t
 	}
-	td.head, t.next = t, td.head
+	td.head, t.next, t.prev = t, td.head, nil
 }
 
 func (td *TDequeue) pop() *T {
 	if td.head != nil {
-		if td.head == td.tail {
-			o := td.head
-			td.head, td.tail = nil, nil
-			return o
-		}
 		o := td.head
 		td.head = td.head.next
-		td.head.prev = nil
+		if o == td.tail {
+			td.tail = nil
+		} else {
+			td.head.prev = nil
+		}
 		return o
 	}
 	return nil
@@ -32,19 +31,19 @@ func (td *TDequeue) pop() *T {
 func (td *TDequeue) pushBack(t *T) {
 	if td.tail != nil {
 		td.tail.next = t
-		t.prev = td.tail
-		td.tail = t
-		return
+	} else {
+		td.head = t
 	}
-	td.head = t
-	td.tail = t
+	td.tail, t.prev, t.next = t, td.tail, nil
 }
 
 func (td *TDequeue) popTail() *T {
 	if td.tail != nil {
 		o := td.tail
 		td.tail = o.prev
-		if o.prev != nil {
+		if o == td.head {
+			td.head = nil
+		} else {
 			td.tail.next = nil
 		}
 		return o
@@ -71,6 +70,28 @@ func (td *TDequeue) prepend(d TDequeue) {
 	}
 }
 
+// splitAt splits the current list such that
+// the 'n'th element is the head of the returned
+// list. if the index is invalid, the returned
+// list is empty.
+func (td *TDequeue) splitAt(n int) TDequeue {
+	piv := td.at(n)
+	if piv == nil {
+		return TDequeue{}
+	} else if piv == td.head {
+		return *td
+	} else if piv == td.tail {
+		out := TDequeue{}
+		out.push(td.popTail())
+		return out
+	}
+	out := TDequeue{}
+	piv.prev.next = nil
+	out.tail, td.tail, piv.prev = td.tail, piv.prev, nil
+	out.head = piv
+	return out
+}
+
 // filter removes elements from the current list and puts
 // them into the returned list. the ordering of elements is
 // preserved.
@@ -88,14 +109,20 @@ func (td *TDequeue) filter(match func(*T) bool) TDequeue {
 				td.popTail()
 			} else {
 				hd.prev.next, hd.next.prev = hd.next, hd.prev
-				hd.next = nil
-				hd.prev = nil
 			}
 			out.pushBack(hd)
 		}
 		hd = cur
 	}
 	return out
+}
+
+func (td *TDequeue) walk(visit func(*T, int)) {
+	i := 0
+	for h := td.head; h != nil; h = h.next {
+		visit(h, i)
+		i++
+	}
 }
 
 //
@@ -108,11 +135,19 @@ func (td *TDequeue) count() int {
 }
 
 // 'at' returns the 'n'th element in the list,
-// or 'nil' if the index is out of range.
+// or 'nil' if the index is out of range. negative
+// indices seek from the tail of the list. in other
+// words, at(-1) is the tail element.
 func (td *TDequeue) at(n int) *T {
 	var o *T
-	for o = td.head; o != nil && n > 0; n-- {
-		o = o.next
+	if n >= 0 {
+		for o = td.head; o != nil && n > 0; n-- {
+			o = o.next
+		}
+	} else {
+		for o = td.tail; o != nil && n < -1; n++ {
+			o = o.prev
+		}
 	}
 	return o
 }
@@ -130,7 +165,7 @@ func (td *TDequeue) insertAt(n int, t *T) {
 		td.pushBack(t)
 		return
 	}
-	t.prev, t.next, el.next = el, el.next, t
+	t.prev, t.next, el.next, el.next.prev = el, el.next, t, t
 }
 
 // removeAt removes the element at index 'n'.

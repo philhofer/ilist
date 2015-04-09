@@ -12,13 +12,25 @@ import (
 	"runtime"
 )
 
+// list.go depends on this, but
+// we don't want to generate it,
+// so we keep it here.
 type T struct {
 	next *T
 	prev *T
 }
 
-var tmplFile *ast.File
-var fileset *token.FileSet
+var (
+	tmplFile *ast.File
+	fileset  *token.FileSet
+)
+
+func init() {
+	err := parseTemplate()
+	if err != nil {
+		panic(err)
+	}
+}
 
 func parseTemplate() error {
 	fileset = token.NewFileSet()
@@ -142,16 +154,6 @@ func AddFieldsTo(filename string, typename string) error {
 	}
 	outfile.Close()
 	return err
-}
-
-type pkgRenamer string
-
-func (p pkgRenamer) Visit(node ast.Node) ast.Visitor {
-	if pn, ok := node.(*ast.Package); ok {
-		pn.Name = string(p)
-		return nil
-	}
-	return p
 }
 
 func WriteImplFileTo(file string) error {
